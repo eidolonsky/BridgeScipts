@@ -1,4 +1,4 @@
-﻿#target bridge
+#target bridge
 if (BridgeTalk.appName == "bridge") {
     RenDesc = new MenuElement("command", "Rename", "at the end of tools");
 }
@@ -10,10 +10,32 @@ RenDesc.onSelect = function () {
         return;
     }
 
+    // 第一步：先用00001, 00002等格式重命名所有文件
+    renameFilesSequentially(new Folder(folder));
+
+    // 第二步：根据EXIF数据进行格式化重命名
     processFolder(new Folder(folder));
 };
 
-// 递归处理文件夹
+// 递归处理文件夹，先用00001, 00002等格式重命名所有文件
+function renameFilesSequentially(folder) {
+    var files = folder.getFiles();
+    var count = 1;
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (file instanceof Folder) {
+            renameFilesSequentially(file);
+        } else if (file instanceof File && file.name.match(/\.jpg$/i)) {
+            var seq = "00000" + count;
+            seq = seq.substr(seq.length - 5);
+            var newName = seq + ".jpg";
+            file.rename(newName);
+            count++;
+        }
+    }
+}
+
+// 递归处理文件夹，根据EXIF数据进行格式化重命名
 function processFolder(folder) {
     var files = folder.getFiles();
     for (var i = 0; i < files.length; i++) {
@@ -92,13 +114,12 @@ function readExifData(file) {
 
 // 解析 EXIF 日期
 function parseExifDate(dateStr) {
-    var parts = dateStr.slice(0, 10);
-    if (parts) {
-        return parts;
+    var date = dateStr.slice(0, 10);
+    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return date;
     }
     return null;
 }
-
 
 // 生成唯一的文件名
 function generateUniqueName(folder, baseName, extension) {
